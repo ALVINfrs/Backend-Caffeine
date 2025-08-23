@@ -1,20 +1,20 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const path = require("path");
-const bodyParser = require("body-parser");
-const { testConnection } = require("./config/database");
-const sessionConfig = require("./config/session");
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import path from "path";
+import bodyParser from "body-parser";
+import { testConnection } from "./config/database";
+import sessionConfig from "./config/session";
 
-const authRoutes = require("./routes/authRoutes");
-const productRoutes = require("./routes/productRoutes");
-const orderRoutes = require("./routes/orderRoutes");
-const voucherRoutes = require("./routes/voucherRoutes");
-const reservationRoutes = require("./routes/reservationRoutes");
+import authRoutes from "./routes/authRoutes";
+import productRoutes from "./routes/productRoutes";
+import orderRoutes from "./routes/orderRoutes";
+import voucherRoutes from "./routes/voucherRoutes";
+import reservationRoutes from "./routes/reservationRoutes";
 
 const app = express();
 app.set("trust proxy", 1);
-const PORT = process.env.PORT || 3000;
+const PORT: number | string = process.env.PORT || 3000;
 
 app.use(
   cors({
@@ -43,4 +43,4 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-module.exports = app;
+export default app;

@@ -1,6 +1,7 @@
-const express = require("express");
+import express from "express";
+import * as voucherController from "../controllers/voucherController";
+
 const router = express.Router();
-const voucherController = require("../controllers/voucherController");
 
 // Route untuk validasi voucher
 router.post("/validate", voucherController.validateVoucher);
@@ -8,4 +9,4 @@ router.post("/validate", voucherController.validateVoucher);
 // Route untuk ambil daftar voucher aktif
 router.get("/active", voucherController.getActiveVouchers);
 
-module.exports = router;
+export default router;

@@ -1,6 +1,20 @@
-const userModel = require("../models/userModel");
+import { Request, Response } from "express";
+import * as userModel from "../models/userModel";
 
-async function register(req, res) {
+// Augment express-session
+declare module 'express-session' {
+  interface SessionData {
+    userId: number;
+    user: {
+        id: number;
+        name: string;
+        email: string;
+        phone: string;
+    }
+  }
+}
+
+async function register(req: Request, res: Response): Promise<Response> {
   const { name, email, password, phone } = req.body;
 
   try {
@@ -12,18 +26,18 @@ async function register(req, res) {
 
     const userId = await userModel.createUser(name, email, password, phone);
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Registrasi berhasil",
       userId: userId,
     });
   } catch (error) {
     console.error("Registration error:", error);
-    res.status(500).json({ error: "Gagal mendaftar" });
+    return res.status(500).json({ error: "Gagal mendaftar" });
   }
 }
 
-async function login(req, res) {
+async function login(req: Request, res: Response): Promise<Response> {
   const { email, password } = req.body;
 
   try {
@@ -50,7 +64,7 @@ async function login(req, res) {
       phone: user.phone,
     };
 
-    res.json({
+    return res.json({
       success: true,
       message: "Login berhasil",
       user: {
@@ -62,20 +76,21 @@ async function login(req, res) {
     });
   } catch (error) {
     console.error("Login error:", error);
-    res.status(500).json({ error: "Gagal login" });
+    return res.status(500).json({ error: "Gagal login" });
   }
 }
 
-function logout(req, res) {
+function logout(req: Request, res: Response): void {
   req.session.destroy((err) => {
     if (err) {
-      return res.status(500).json({ error: "Gagal logout" });
+      res.status(500).json({ error: "Gagal logout" });
+      return;
     }
     res.json({ success: true, message: "Logout berhasil" });
   });
 }
 
-function getAuthStatus(req, res) {
+function getAuthStatus(req: Request, res: Response): void {
   if (req.session.user) {
     res.json({
       isAuthenticated: true,
@@ -86,7 +101,7 @@ function getAuthStatus(req, res) {
   }
 }
 
-module.exports = {
+export {
   register,
   login,
   logout,

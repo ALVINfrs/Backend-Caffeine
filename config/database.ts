@@ -1,18 +1,18 @@
-require("dotenv").config();
-const mysql = require("mysql2/promise");
+import "dotenv/config";
+import mysql, { Pool } from "mysql2/promise";
 
-const pool = mysql.createPool({
+const pool: Pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
+  port: Number(process.env.DB_PORT),
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 20,
   queueLimit: 0,
 });
 
-async function testConnection() {
+async function testConnection(): Promise<void> {
   try {
     const connection = await pool.getConnection();
     console.log("Database connection successful");
@@ -22,4 +22,4 @@ async function testConnection() {
   }
 }
 
-module.exports = { pool, testConnection };
+export { pool, testConnection };

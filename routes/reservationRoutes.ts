@@ -1,6 +1,7 @@
-const express = require("express");
+import express from "express";
+import * as reservationController from "../controllers/reservationController";
+
 const router = express.Router();
-const reservationController = require("../controllers/reservationController");
 
 // Public routes
 router.get("/rooms", reservationController.getAvailableRooms);
@@ -20,4 +21,5 @@ router.get(
   reservationController.getReservationHistory
 );
 
-module.exports = router;
+export default router;
+

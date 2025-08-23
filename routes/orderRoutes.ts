@@ -1,6 +1,7 @@
-const express = require("express");
-const orderController = require("../controllers/orderController");
-const { isAuthenticated } = require("../middleware/auth");
+import express from "express";
+import * as orderController from "../controllers/orderController";
+import { isAuthenticated } from "../middleware/auth";
+
 const router = express.Router();
 
 // Existing routes
@@ -16,4 +17,5 @@ router.put(
   isAuthenticated,
   orderController.updatePaymentMethod
 );
-module.exports = router;
+
+export default router;
