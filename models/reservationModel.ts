@@ -2,91 +2,94 @@ import { pool } from "../config/database";
 import { PoolConnection, ResultSetHeader, RowDataPacket } from "mysql2/promise";
 
 interface RoomTable extends RowDataPacket {
-    room_type: string;
-    table_number: number;
-    capacity: number;
-    description: string;
-    price_per_hour: number;
+  room_type: string;
+  table_number: number;
+  capacity: number;
+  description: string;
+  price_per_hour: number;
 }
 
 interface Reservation extends RowDataPacket {
-    id: number;
-    user_id: number | null;
-    customer_name: string;
-    email: string;
-    phone: string;
-    reservation_date: Date;
-    reservation_time: string;
-    duration_hours: number;
-    room_type: string;
-    table_number: number;
-    guest_count: number;
-    special_request: string | null;
-    price_per_hour: number;
-    total_price: number;
-    status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no-show';
-    reservation_number: string;
-    table_description?: string;
-    table_capacity?: number;
+  id: number;
+  user_id: number | null;
+  customer_name: string;
+  email: string;
+  phone: string;
+  reservation_date: Date;
+  reservation_time: string;
+  duration_hours: number;
+  room_type: string;
+  table_number: number;
+  guest_count: number;
+  special_request: string | null;
+  price_per_hour: number;
+  total_price: number;
+  status: "pending" | "confirmed" | "completed" | "cancelled" | "no-show";
+  reservation_number: string;
+  table_description?: string;
+  table_capacity?: number;
 }
 
 interface ReservationHistory extends RowDataPacket {
-    id: number;
-    reservation_id: number;
-    action: string;
-    old_date: Date | null;
-    old_time: string | null;
-    new_date: Date | null;
-    new_time: string | null;
-    notes: string | null;
-    created_at: Date;
+  id: number;
+  reservation_id: number;
+  action: string;
+  old_date: Date | null;
+  old_time: string | null;
+  new_date: Date | null;
+  new_time: string | null;
+  notes: string | null;
+  created_at: Date;
 }
 
 interface CreateReservationData {
-    userId: number | null;
-    customerName: string;
-    email: string;
-    phone: string;
-    reservationDate: string;
-    reservationTime: string;
-    durationHours: number;
-    roomType: string;
-    tableNumber: number;
-    guestCount: number;
-    specialRequest: string | null;
+  userId: number | null;
+  customerName: string;
+  email: string;
+  phone: string;
+  reservationDate: string;
+  reservationTime: string;
+  durationHours: number;
+  roomType: string;
+  tableNumber: number;
+  guestCount: number;
+  specialRequest: string | null;
 }
 
 // Get available rooms and tables
 async function getAvailableRooms(): Promise<{ [key: string]: RoomTable[] }> {
-    const [rooms] = await pool.query<RoomTable[]>(`
+  const [rooms] = await pool.query<RoomTable[]>(`
     SELECT room_type, table_number, capacity, description, price_per_hour
     FROM room_tables
     WHERE is_available = 1
     ORDER BY room_type, table_number
   `);
 
-    // Group by room type
-    const roomsByType = rooms.reduce((acc: { [key: string]: RoomTable[] }, room) => {
-        if (!acc[room.room_type]) {
-            acc[room.room_type] = [];
-        }
-        acc[room.room_type].push(room);
-        return acc;
-    }, {});
+  // Group by room type
+  const roomsByType = rooms.reduce(
+    (acc: { [key: string]: RoomTable[] }, room) => {
+      if (!acc[room.room_type]) {
+        acc[room.room_type] = [];
+      }
+      acc[room.room_type].push(room);
+      return acc;
+    },
+    {}
+  );
 
-    return roomsByType;
+  return roomsByType;
 }
 
 // Check table availability for specific date and time
 async function checkTableAvailability(
-    roomType: string,
-    tableNumber: string,
-    date: string,
-    time: string,
-    durationHours: number,
-    excludeReservationId: number | null = null
+  roomType: string,
+  tableNumber: string,
+  date: string,
+  time: string,
+  durationHours: number,
+  excludeReservationId: number | null = null
 ): Promise<boolean> {
-    let query = `
+  let query = `
     SELECT COUNT(*) as conflict_count
     FROM reservations
     WHERE room_type = ?
@@ -100,372 +103,393 @@ async function checkTableAvailability(
     )
   `;
 
-    const params: (string | number | null)[] = [
-        roomType,
-        tableNumber,
-        date,
-        time,
-        `${date} ${time}`,
-        time,
-        `${date} ${time}`,
-    ];
+  const params: (string | number | null)[] = [
+    roomType,
+    tableNumber,
+    date,
+    time,
+    `${date} ${time}`,
+    time,
+    `${date} ${time}`,
+  ];
 
-    if (excludeReservationId) {
-        query += ` AND id != ?`;
-        params.push(excludeReservationId);
-    }
+  if (excludeReservationId) {
+    query += ` AND id != ?`;
+    params.push(excludeReservationId);
+  }
 
-    const [result] = await pool.query<RowDataPacket[]>(query, params);
-    return result[0].conflict_count === 0;
+  const [result] = await pool.query<RowDataPacket[]>(query, params);
+  return result[0].conflict_count === 0;
 }
 
 // Get table price
-async function getTablePrice(roomType: string, tableNumber: string): Promise<number> {
-    const [result] = await pool.query<RowDataPacket[]>(
-        "SELECT price_per_hour FROM room_tables WHERE room_type = ? AND table_number = ?",
-        [roomType, tableNumber]
-    );
+async function getTablePrice(
+  roomType: string,
+  tableNumber: string
+): Promise<number> {
+  const [result] = await pool.query<RowDataPacket[]>(
+    "SELECT price_per_hour FROM room_tables WHERE room_type = ? AND table_number = ?",
+    [roomType, tableNumber]
+  );
 
-    return result.length > 0 ? result[0].price_per_hour : 0;
+  return result.length > 0 ? result[0].price_per_hour : 0;
 }
 
 // Create new reservation
-async function createReservation(reservationData: CreateReservationData): Promise<{ reservationId: number, reservationNumber: string, totalPrice: number }> {
-    const connection = await pool.getConnection();
-    await connection.beginTransaction();
+async function createReservation(
+  reservationData: CreateReservationData
+): Promise<{
+  reservationId: number;
+  reservationNumber: string;
+  totalPrice: number;
+}> {
+  const connection = await pool.getConnection();
+  await connection.beginTransaction();
 
-    try {
-        const {
-            userId,
-            customerName,
-            email,
-            phone,
-            reservationDate,
-            reservationTime,
-            durationHours,
-            roomType,
-            tableNumber,
-            guestCount,
-            specialRequest,
-        } = reservationData;
+  try {
+    const {
+      userId,
+      customerName,
+      email,
+      phone,
+      reservationDate,
+      reservationTime,
+      durationHours,
+      roomType,
+      tableNumber,
+      guestCount,
+      specialRequest,
+    } = reservationData;
 
-        // Check availability
-        const isAvailable = await checkTableAvailability(
-            roomType,
-            tableNumber.toString(),
-            reservationDate,
-            reservationTime,
-            durationHours
-        );
+    // Check availability
+    const isAvailable = await checkTableAvailability(
+      roomType,
+      tableNumber.toString(),
+      reservationDate,
+      reservationTime,
+      durationHours
+    );
 
-        if (!isAvailable) {
-            throw new Error("Meja tidak tersedia untuk waktu yang dipilih");
-        }
+    if (!isAvailable) {
+      throw new Error("Meja tidak tersedia untuk waktu yang dipilih");
+    }
 
-        // Get price per hour
-        const pricePerHour = await getTablePrice(roomType, tableNumber.toString());
-        const totalPrice = pricePerHour * durationHours;
+    // Get price per hour
+    const pricePerHour = await getTablePrice(roomType, tableNumber.toString());
+    const totalPrice = pricePerHour * durationHours;
 
-        // Create reservation
-        const [result] = await connection.query<ResultSetHeader>(
-            `
+    // Create reservation
+    const [result] = await connection.query<ResultSetHeader>(
+      `
       INSERT INTO reservations
       (user_id, customer_name, email, phone, reservation_date, reservation_time,
        duration_hours, room_type, table_number, guest_count, special_request,
        price_per_hour, total_price, status)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed')
     `,
-            [
-                userId,
-                customerName,
-                email,
-                phone,
-                reservationDate,
-                reservationTime,
-                durationHours,
-                roomType,
-                tableNumber,
-                guestCount,
-                specialRequest,
-                pricePerHour,
-                totalPrice,
-            ]
-        );
+      [
+        userId,
+        customerName,
+        email,
+        phone,
+        reservationDate,
+        reservationTime,
+        durationHours,
+        roomType,
+        tableNumber,
+        guestCount,
+        specialRequest,
+        pricePerHour,
+        totalPrice,
+      ]
+    );
 
-        const reservationId = result.insertId;
+    const reservationId = result.insertId;
 
-        // Generate reservation number
-        const reservationNumber = `RES-${reservationId}-${Date.now()
-            .toString()
-            .slice(-6)}`;
+    // Generate reservation number
+    const reservationNumber = `RES-${reservationId}-${Date.now()
+      .toString()
+      .slice(-6)}`;
 
-        // Update with reservation number
-        await connection.query(
-            "UPDATE reservations SET reservation_number = ? WHERE id = ?",
-            [reservationNumber, reservationId]
-        );
+    // Update with reservation number
+    await connection.query(
+      "UPDATE reservations SET reservation_number = ? WHERE id = ?",
+      [reservationNumber, reservationId]
+    );
 
-        // Add to history
-        await connection.query(
-            `
+    // Add to history
+    await connection.query(
+      `
       INSERT INTO reservation_history
       (reservation_id, action, new_date, new_time, notes)
       VALUES (?, 'created', ?, ?, 'Reservasi dibuat')
     `,
-            [reservationId, reservationDate, reservationTime]
-        );
+      [reservationId, reservationDate, reservationTime]
+    );
 
-        await connection.commit();
+    await connection.commit();
 
-        return {
-            reservationId,
-            reservationNumber,
-            totalPrice,
-        };
-    } catch (error) {
-        await connection.rollback();
-        throw error;
-    } finally {
-        connection.release();
-    }
+    return {
+      reservationId,
+      reservationNumber,
+      totalPrice,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 // Get reservation by ID
-async function getReservationById(reservationId: number): Promise<Reservation | null> {
-    const [reservations] = await pool.query<Reservation[]>(
-        `
+async function getReservationById(
+  reservationId: number
+): Promise<Reservation | null> {
+  const [reservations] = await pool.query<Reservation[]>(
+    `
     SELECT r.*, rt.description as table_description, rt.capacity as table_capacity
     FROM reservations r
     LEFT JOIN room_tables rt ON r.room_type = rt.room_type AND r.table_number = rt.table_number
     WHERE r.id = ?
   `,
-        [reservationId]
-    );
+    [reservationId]
+  );
 
-    if (reservations.length === 0) {
-        return null;
-    }
+  if (reservations.length === 0) {
+    return null;
+  }
 
-    return reservations[0];
+  return reservations[0];
 }
 
 // Get reservation by reservation number
-async function getReservationByNumber(reservationNumber: string): Promise<Reservation | null> {
-    const [reservations] = await pool.query<Reservation[]>(
-        `
+async function getReservationByNumber(
+  reservationNumber: string
+): Promise<Reservation | null> {
+  const [reservations] = await pool.query<Reservation[]>(
+    `
     SELECT r.*, rt.description as table_description, rt.capacity as table_capacity
     FROM reservations r
     LEFT JOIN room_tables rt ON r.room_type = rt.room_type AND r.table_number = rt.table_number
     WHERE r.reservation_number = ?
   `,
-        [reservationNumber]
-    );
+    [reservationNumber]
+  );
 
-    if (reservations.length === 0) {
-        return null;
-    }
+  if (reservations.length === 0) {
+    return null;
+  }
 
-    return reservations[0];
+  return reservations[0];
 }
 
 // Get user reservations
 async function getUserReservations(userId: number): Promise<Reservation[]> {
-    const [reservations] = await pool.query<Reservation[]>(
-        `
+  const [reservations] = await pool.query<Reservation[]>(
+    `
     SELECT r.*, rt.description as table_description, rt.capacity as table_capacity
     FROM reservations r
     LEFT JOIN room_tables rt ON r.room_type = rt.room_type AND r.table_number = rt.table_number
     WHERE r.user_id = ?
     ORDER BY r.reservation_date DESC, r.reservation_time DESC
   `,
-        [userId]
-    );
+    [userId]
+  );
 
-    return reservations;
+  return reservations;
 }
 
 // Reschedule reservation
 async function rescheduleReservation(
-    reservationId: number,
-    newDate: string,
-    newTime: string,
-    durationHours: number
+  reservationId: number,
+  newDate: string,
+  newTime: string,
+  durationHours: number
 ): Promise<boolean> {
-    const connection = await pool.getConnection();
-    await connection.beginTransaction();
+  const connection = await pool.getConnection();
+  await connection.beginTransaction();
 
-    try {
-        // Get current reservation
-        const [current] = await connection.query<Reservation[]>(
-            "SELECT * FROM reservations WHERE id = ?",
-            [reservationId]
-        );
+  try {
+    // Get current reservation
+    const [current] = await connection.query<Reservation[]>(
+      "SELECT * FROM reservations WHERE id = ?",
+      [reservationId]
+    );
 
-        if (current.length === 0) {
-            throw new Error("Reservasi tidak ditemukan");
-        }
+    if (current.length === 0) {
+      throw new Error("Reservasi tidak ditemukan");
+    }
 
-        const reservation = current[0];
+    const reservation = current[0];
 
-        // Check if can be rescheduled (only pending or confirmed)
-        if (!["pending", "confirmed"].includes(reservation.status)) {
-            throw new Error("Reservasi tidak dapat dijadwal ulang");
-        }
+    // Check if can be rescheduled (only pending or confirmed)
+    if (!["pending", "confirmed"].includes(reservation.status)) {
+      throw new Error("Reservasi tidak dapat dijadwal ulang");
+    }
 
-        // Check new slot availability
-        const isAvailable = await checkTableAvailability(
-            reservation.room_type,
-            reservation.table_number.toString(),
-            newDate,
-            newTime,
-            durationHours,
-            reservationId
-        );
+    // Check new slot availability
+    const isAvailable = await checkTableAvailability(
+      reservation.room_type,
+      reservation.table_number.toString(),
+      newDate,
+      newTime,
+      durationHours,
+      reservationId
+    );
 
-        if (!isAvailable) {
-            throw new Error("Waktu baru tidak tersedia");
-        }
+    if (!isAvailable) {
+      throw new Error("Waktu baru tidak tersedia");
+    }
 
-        // Recalculate price if duration changed
-        const pricePerHour = await getTablePrice(
-            reservation.room_type,
-            reservation.table_number.toString()
-        );
-        const newTotalPrice = pricePerHour * durationHours;
+    // Recalculate price if duration changed
+    const pricePerHour = await getTablePrice(
+      reservation.room_type,
+      reservation.table_number.toString()
+    );
+    const newTotalPrice = pricePerHour * durationHours;
 
-        const oldDate = reservation.reservation_date;
-        const oldTime = reservation.reservation_time;
+    const oldDate = reservation.reservation_date;
+    const oldTime = reservation.reservation_time;
 
-        // Update reservation
-        await connection.query(
-            `
+    // Update reservation
+    await connection.query(
+      `
       UPDATE reservations
       SET reservation_date = ?, reservation_time = ?, duration_hours = ?,
           total_price = ?, updated_at = NOW()
       WHERE id = ?
     `,
-            [newDate, newTime, durationHours, newTotalPrice, reservationId]
-        );
+      [newDate, newTime, durationHours, newTotalPrice, reservationId]
+    );
 
-        // Add to history
-        await connection.query(
-            `
+    // Add to history
+    await connection.query(
+      `
       INSERT INTO reservation_history
       (reservation_id, action, old_date, old_time, new_date, new_time, notes)
       VALUES (?, 'rescheduled', ?, ?, ?, ?, 'Reservasi dijadwal ulang')
     `,
-            [reservationId, oldDate, oldTime, newDate, newTime]
-        );
+      [reservationId, oldDate, oldTime, newDate, newTime]
+    );
 
-        await connection.commit();
-        return true;
-    } catch (error) {
-        await connection.rollback();
-        throw error;
-    } finally {
-        connection.release();
-    }
+    await connection.commit();
+    return true;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 // Cancel reservation
-async function cancelReservation(reservationId: number, reason: string | null = null): Promise<boolean> {
-    const connection = await pool.getConnection();
-    await connection.beginTransaction();
+async function cancelReservation(
+  reservationId: number,
+  reason: string | null = null
+): Promise<boolean> {
+  const connection = await pool.getConnection();
+  await connection.beginTransaction();
 
-    try {
-        // Get current reservation
-        const [current] = await connection.query<Reservation[]>(
-            "SELECT * FROM reservations WHERE id = ?",
-            [reservationId]
-        );
+  try {
+    // Get current reservation
+    const [current] = await connection.query<Reservation[]>(
+      "SELECT * FROM reservations WHERE id = ?",
+      [reservationId]
+    );
 
-        if (current.length === 0) {
-            throw new Error("Reservasi tidak ditemukan");
-        }
+    if (current.length === 0) {
+      throw new Error("Reservasi tidak ditemukan");
+    }
 
-        const reservation = current[0];
+    const reservation = current[0];
 
-        // Check if can be cancelled
-        if (["completed", "cancelled"].includes(reservation.status)) {
-            throw new Error("Reservasi tidak dapat dibatalkan");
-        }
+    // Check if can be cancelled
+    if (["completed", "cancelled"].includes(reservation.status)) {
+      throw new Error("Reservasi tidak dapat dibatalkan");
+    }
 
-        // Update status
-        await connection.query(
-            `
+    // Update status
+    await connection.query(
+      `
       UPDATE reservations
       SET status = 'cancelled', updated_at = NOW()
       WHERE id = ?
     `,
-            [reservationId]
-        );
+      [reservationId]
+    );
 
-        // Add to history
-        await connection.query(
-            `
+    // Add to history
+    await connection.query(
+      `
       INSERT INTO reservation_history
       (reservation_id, action, notes)
       VALUES (?, 'cancelled', ?)
     `,
-            [reservationId, reason || "Reservasi dibatalkan oleh user"]
-        );
+      [reservationId, reason || "Reservasi dibatalkan oleh user"]
+    );
 
-        await connection.commit();
-        return true;
-    } catch (error) {
-        await connection.rollback();
-        throw error;
-    } finally {
-        connection.release();
-    }
+    await connection.commit();
+    return true;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 // Update reservation status
-async function updateReservationStatus(reservationId: number, status: string): Promise<void> {
-    await pool.query(
-        `
+async function updateReservationStatus(
+  reservationId: number,
+  status: string
+): Promise<void> {
+  await pool.query(
+    `
     UPDATE reservations
     SET status = ?, updated_at = NOW()
     WHERE id = ?
   `,
-        [status, reservationId]
-    );
+    [status, reservationId]
+  );
 
-    // Add to history
-    await pool.query(
-        `
+  // Add to history
+  await pool.query(
+    `
     INSERT INTO reservation_history
     (reservation_id, action, notes)
     VALUES (?, ?, ?)
   `,
-        [reservationId, status, `Status diubah menjadi ${status}`]
-    );
+    [reservationId, status, `Status diubah menjadi ${status}`]
+  );
 }
 
 // Get reservation history
-async function getReservationHistory(reservationId: number): Promise<ReservationHistory[]> {
-    const [history] = await pool.query<ReservationHistory[]>(
-        `
+async function getReservationHistory(
+  reservationId: number
+): Promise<ReservationHistory[]> {
+  const [history] = await pool.query<ReservationHistory[]>(
+    `
     SELECT * FROM reservation_history
     WHERE reservation_id = ?
     ORDER BY created_at DESC
   `,
-        [reservationId]
-    );
+    [reservationId]
+  );
 
-    return history;
+  return history;
 }
 
 export {
-    getAvailableRooms,
-    checkTableAvailability,
-    getTablePrice,
-    createReservation,
-    getReservationById,
-    getReservationByNumber,
-    getUserReservations,
-    rescheduleReservation,
-    cancelReservation,
-    updateReservationStatus,
-    getReservationHistory,
+  getAvailableRooms,
+  checkTableAvailability,
+  getTablePrice,
+  createReservation,
+  getReservationById,
+  getReservationByNumber,
+  getUserReservations,
+  rescheduleReservation,
+  cancelReservation,
+  updateReservationStatus,
+  getReservationHistory,
 };

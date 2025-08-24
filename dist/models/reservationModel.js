@@ -96,6 +96,15 @@ function createReservation(reservationData) {
             // Get price per hour
             const pricePerHour = yield getTablePrice(roomType, tableNumber.toString());
             const totalPrice = pricePerHour * durationHours;
+            const parsedDurationHours = Number(durationHours);
+            const parsedTableNumber = Number(tableNumber);
+            const parsedGuestCount = Number(guestCount);
+            const parsedPricePerHour = Number(pricePerHour);
+            const parsedTotalPrice = Number(totalPrice);
+            // Validasi nilai
+            if (isNaN(parsedTableNumber)) {
+                throw new Error("Invalid table number. Please provide a valid number.");
+            }
             // Create reservation
             const [result] = yield connection.query(`
       INSERT INTO reservations
@@ -110,13 +119,13 @@ function createReservation(reservationData) {
                 phone,
                 reservationDate,
                 reservationTime,
-                durationHours,
+                parsedDurationHours,
                 roomType,
-                tableNumber,
-                guestCount,
+                parsedTableNumber,
+                parsedGuestCount,
                 specialRequest,
-                pricePerHour,
-                totalPrice,
+                parsedPricePerHour,
+                parsedTotalPrice,
             ]);
             const reservationId = result.insertId;
             // Generate reservation number

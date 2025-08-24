@@ -151,6 +151,10 @@ function createReservation(req, res) {
         }
         try {
             const userId = ((_a = req.session) === null || _a === void 0 ? void 0 : _a.userId) || null;
+            const parsedTableNumber = Number(tableNumber);
+            if (isNaN(parsedTableNumber)) {
+                return res.status(400).json({ message: "Invalid table number" });
+            }
             const reservationData = {
                 userId,
                 customerName,
