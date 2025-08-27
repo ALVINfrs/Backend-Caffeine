@@ -1,5 +1,5 @@
-import { Request, Response } from 'express';
-import db from '../../config/database';
+import { Request, Response } from "express";
+import { pool as db } from "./../../config/database";
 
 // Fungsi untuk mendapatkan ringkasan data (Total Pendapatan, Pesanan, Pelanggan)
 export const getDashboardSummary = async (req: Request, res: Response) => {
@@ -25,8 +25,8 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
       totalUsers: usersResult[0].totalUsers || 0,
     });
   } catch (error) {
-    console.error('Error fetching dashboard summary:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.error("Error fetching dashboard summary:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
@@ -45,15 +45,15 @@ export const getSalesChartData = async (req: Request, res: Response) => {
 
     res.json(salesData);
   } catch (error) {
-    console.error('Error fetching sales chart data:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.error("Error fetching sales chart data:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
 // Fungsi untuk mendapatkan produk terlaris
 export const getTopSellingProducts = async (req: Request, res: Response) => {
-    try {
-        const [topProducts]: any = await db.query(`
+  try {
+    const [topProducts]: any = await db.query(`
             SELECT p.name, SUM(oi.quantity) as totalQuantity
             FROM order_items oi
             JOIN products p ON oi.product_id = p.id
@@ -61,25 +61,25 @@ export const getTopSellingProducts = async (req: Request, res: Response) => {
             ORDER BY totalQuantity DESC
             LIMIT 5
         `);
-        res.json(topProducts);
-    } catch (error) {
-        console.error('Error fetching top selling products:', error);
-        res.status(500).json({ message: 'Internal Server Error' });
-    }
+    res.json(topProducts);
+  } catch (error) {
+    console.error("Error fetching top selling products:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 };
 
 // Fungsi untuk mendapatkan pesanan terbaru
 export const getRecentOrders = async (req: Request, res: Response) => {
-    try {
-        const [recentOrders]: any = await db.query(`
+  try {
+    const [recentOrders]: any = await db.query(`
             SELECT id, order_number, customer_name, total, status, order_date
             FROM orders
             ORDER BY order_date DESC
             LIMIT 5
         `);
-        res.json(recentOrders);
-    } catch (error) {
-        console.error('Error fetching recent orders:', error);
-        res.status(500).json({ message: 'Internal Server Error' });
-    }
+    res.json(recentOrders);
+  } catch (error) {
+    console.error("Error fetching recent orders:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 };

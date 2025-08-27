@@ -2,16 +2,16 @@ import { Request, Response } from "express";
 import * as userModel from "../models/userModel";
 
 // Augment express-session to include user with role
-declare module 'express-session' {
+declare module "express-session" {
   interface SessionData {
     userId: number;
-    user: {
-        id: number;
-        name: string;
-        email: string;
-        phone: string;
-        role: string; // Role is important for auth middleware
-    }
+    user?: {
+      id: number;
+      name: string;
+      email: string;
+      phone: string;
+      role: string; // Role is important for auth middleware
+    };
   }
 }
 
@@ -98,8 +98,10 @@ async function staffLogin(req: Request, res: Response): Promise<Response> {
 
     // *** INI PERBEDAAN UTAMANYA ***
     // Cek apakah role-nya admin atau kasir
-    if (user.role !== 'admin' && user.role !== 'cashier') {
-        return res.status(403).json({ error: "Akses ditolak. Akun Anda bukan akun staf." });
+    if (user.role !== "admin" && user.role !== "cashier") {
+      return res
+        .status(403)
+        .json({ error: "Akses ditolak. Akun Anda bukan akun staf." });
     }
 
     req.session.userId = user.id;
@@ -128,7 +130,7 @@ function logout(req: Request, res: Response): void {
       res.status(500).json({ error: "Gagal logout" });
       return;
     }
-    res.clearCookie('connect.sid'); // Hapus cookie session
+    res.clearCookie("connect.sid"); // Hapus cookie session
     res.json({ success: true, message: "Logout berhasil" });
   });
 }
