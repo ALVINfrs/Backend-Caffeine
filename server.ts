@@ -20,6 +20,8 @@ import adminUserRoutes from "./routes/admin/userAdminRoutes";
 import adminVoucherRoutes from "./routes/admin/voucherAdminRoutes";
 import cashierOrderRoutes from "./routes/cashier/orderRoutes";
 import intelligentRecommendationRoutes from "./routes/intelligentRecommendationRoutes";
+import eventRoutes from "./routes/eventRoutes"; // <-- Tambahkan ini
+import adminEventRoutes from "./routes/admin/eventAdminRoutes"; // <-- Tambahkan ini
 
 const app = express();
 app.set("trust proxy", 1);
@@ -54,6 +56,8 @@ app.use("/api/admin/users", adminUserRoutes);
 app.use("/api/admin/vouchers", adminVoucherRoutes);
 app.use("/api/cashier/orders", cashierOrderRoutes);
 app.use("/api/recomendations", intelligentRecommendationRoutes);
+app.use("/api/events", eventRoutes); // <-- Tambahkan ini (untuk publik)
+app.use("/api/admin/events", adminEventRoutes); // <-- Tambahkan ini (untuk admin)
 // Swagger UI
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
